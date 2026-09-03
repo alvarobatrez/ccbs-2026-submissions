@@ -9,7 +9,7 @@ Completing each additional lecture is voluntary and earns extra credit.
 
 | # | Date | Topic | Team | Student places |
 |---|---|---|---|---|
-| 3 | 2026-09-08 | Reaction networks, with the central dogma as the worked example | Your test (周文沁) (@emilyzzz233) | 2 open |
+| 3 | 2026-09-08 | Reaction networks, with the central dogma as the worked example | Your test (测试) (@emilyzzz233) | 2 open |
 | 4 | 2026-09-10 | Dynamics: local stability, phase portraits, bifurcations | Álvaro Bátrez (@alvarobatrez) | 2 open |
 | 5 | 2026-09-15 | Stochastic dynamics: the master equation and Gillespie | Kehan Lang (郎可菡) (@PiperL01), Leo Sin (施延庆) (@LeoYANQING) | 1 open |
 | 6 | 2026-09-17 | Timescale separation: singular perturbation, QSSA, telegraph model | _open_ | **3 open; lecturer covers if unclaimed** |
