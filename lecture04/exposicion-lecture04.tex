@@ -1,0 +1,811 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[left=3.0cm,right=3.0cm,top=3.0cm,bottom=3.0cm]{geometry}
+\usepackage[numbers]{natbib}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\setlength{\parskip}{1em}
+
+% ============================================================
+%  Exposition — Lecture 04, CCBS (EST 5053), Fall 2026
+%  Álvaro Bátrez
+%
+%  AUTHOR'S NOTE:
+%  All figure slots are marked with
+%      % === FIGURE n: description ===
+%  and use provisional file names inside figs/.
+%  Replace them with the graphics/animations exported from
+%  Mathematica (PDF or PNG format).
+% ============================================================
+
+\title{Lecture 04 --- Dynamics: local stability, phase portraits and bifurcations\\
+\large From biochemical structure to dynamical function}
+\author{Álvaro Bátrez}
+\date{September 10, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent A simulation tells us what \emph{one} cell did \emph{once}. In this session
+we build the map that goes from the \textbf{structure} of a biochemical network to
+its dynamical \textbf{function}: the dimension of the system decides which behaviors
+are possible, and chemistry decides which vector fields a cell can have. We walk
+through the phase line in one dimension, the construction of memory through three
+crossings, the saddle-node bifurcation with its experimental signatures (hysteresis
+and \emph{critical slowing down}), the genetic toggle switch in two dimensions,
+linearization and the Hurwitz rule, Lyapunov functions for the cases where the
+Jacobian stays silent, and the restrictions that chemistry imposes on the
+mathematically possible vector fields.
+\end{abstract}
+
+\tableofcontents
+
+\newpage
+
+% ============================================================
+\section{Why analyze, if we can already simulate?}
+% ============================================================
+
+\subsection{Starting point: a model we already master}
+
+In the previous lecture we wrote reactions, assembled the system
+$\dot{x} = S\,v(x)$ and integrated the equations. Take the simplest example:
+a constitutively produced protein with constant production rate $\mu$, removed
+(degradation + growth dilution) at the first-order rate $\lambda$:
+
+\begin{equation}
+\dot{x} = \mu - \lambda x,
+\qquad
+x^{*} = \frac{\mu}{\lambda},
+\qquad
+x(t) = x^{*} + \left(x_0 - x^{*}\right) e^{-\lambda t}.
+\label{eq:constitutive}
+\end{equation}
+
+Everything is solved exactly: the steady level is $x^{*} = \mu/\lambda$ and the
+relaxation time is $1/\lambda$. Moving a slider in the simulation changes
+\emph{both things at once}.
+
+% === FIGURE 1: simulation of equation (1) for 2-3 values of lambda ===
+% Mathematica hint: Plot of x(t) with lambda = 0.25, 0.5, 1.0, mu = 2, x0 = 0.4
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{figs/fig01_relaxation.pdf}
+\caption{Exact solution of equation~\eqref{eq:constitutive} for several values
+of $\lambda$. The steady state moves as $1/\lambda$, and so does the relaxation
+time.}
+\label{fig:relaxation}
+\end{figure}
+
+\textbf{Room check.} If $\lambda$ goes from $0.5$ to $1.0$, where does the steady
+level move, and by what factor does the relaxation time change? Can you name one
+biological change that the slider does \emph{not} represent?
+
+\subsection{Limit 1: the discarded mechanism is not in the run}
+
+Every cellular model is built by \emph{compression}: several promoter binding states
+become one effective Hill curve; transcription and translation become a single
+production arrow; a conserved pool may drop out of the coordinates. Each compression
+says ``this hidden process is fast, fixed, or irrelevant.'' A simulation cannot tell
+us what the discarded process would have changed, because that process \emph{is not
+in the equations being run}.
+
+\subsection{Limit 2: the family is too large to enumerate}
+
+With ten uncertain parameters sampled at only ten settings each, we already face
+$10^{10}$ combinations, before sampling a single initial condition. We need
+statements like ``every field with this sign pattern is stable'' or ``no scalar
+autonomous system can oscillate'': each one covers \emph{infinitely many} numerical
+runs at once.
+
+\subsection{The map we want: from structure to function}
+
+\begin{center}
+\begin{tabular}{lll}
+\textbf{Structure} (coarse to fine) & $\longrightarrow$ & \textbf{Function} (coarse to fine) \\
+\hline
+interaction graph & & admissible region; bounded? \\
+signs and invariant pools & & stable fixed point? \\
+response-curve shapes & & how many states? switch or cycle? \\
+parameters + initial state & & period, amplitude, one trajectory \\
+\end{tabular}
+\end{center}
+
+The bottom arrow is ordinary simulation. The upper arrows are the ones we want to
+justify, because each holds for a \emph{family} of models.
+
+% === FIGURE 2: diagram of the structure -> function map (TikZ or Mathematica) ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figs/fig02_map.pdf}
+\caption{The structure-to-function map that organizes the whole lecture.}
+\label{fig:map}
+\end{figure}
+
+\begin{quote}
+\textbf{Structural does not mean vague.} A structural claim names the information
+it uses and the family over which the conclusion holds.
+\end{quote}
+
+\newpage
+
+% ============================================================
+\section{One dimension: a fixed point is a crossing}
+% ============================================================
+
+\subsection{Addition against removal}
+
+Let $x \geq 0$ be a concentration. Write its net rate as an \emph{addition} rate
+minus a \emph{removal} rate, both nonnegative:
+
+\begin{equation}
+\dot{x} = f^{+}(x) - f^{-}(x) = f(x),
+\qquad f^{+}(x) \geq 0,\quad f^{-}(x) \geq 0.
+\label{eq:addrem}
+\end{equation}
+
+A fixed point $x^{*}$ is a \textbf{crossing} of the addition and removal curves:
+$f^{+}(x^{*}) = f^{-}(x^{*})$. Just to the right of the crossing, removal must win
+for motion to point back; just to the left, addition must win. At a simple crossing
+this is the slope condition
+
+\begin{equation}
+f'(x^{*}) = (f^{+})'(x^{*}) - (f^{-})'(x^{*}) < 0.
+\label{eq:slope}
+\end{equation}
+
+This split uses the physical domain of a concentration ($x \geq 0$, both terms
+nonnegative). It is not cosmetic: it is a structural restriction we will return to
+in section~\ref{sec:chemistry}.
+
+\subsection{The phase-line recipe}
+
+\begin{enumerate}[nosep]
+  \item Plot $f(x)$ (or plot $f^{+}$ and $f^{-}$ separately and compare them).
+  \item Mark every zero of $f$.
+  \item On each interval between zeros: arrow right if $f>0$, left if $f<0$.
+  \item Translate the phase line into time traces $x(t)$ from several initial conditions.
+\end{enumerate}
+
+\subsection{Three fields, three behaviors}
+
+\paragraph{(a) Decay: $\dot{x} = -x$.} The field crosses zero with negative slope;
+both arrows point to the origin; every trajectory decays exponentially.
+
+\paragraph{(b) Nonhyperbolic growth: $\dot{x} = x^{2}$.} The field only \emph{touches}
+zero: it attracts from the left and repels to the right, and $f'(0)=0$ cannot
+classify it. Separating variables:
+
+\begin{equation}
+x(t) = \frac{x_0}{1 - x_0 t},
+\label{eq:blowup}
+\end{equation}
+
+so for $x_0 > 0$ there is finite-time escape, at $t = 1/x_0$. The phase line got the
+\emph{direction} right, but it carried no clock.
+
+\paragraph{(c) Bistable switch: $\dot{x} = -(x-1)(x-2)(x-3)$.} Two attracting roots
+separated by one repelling threshold: memory without a cycle.
+
+% === FIGURE 3: three rows: f(x), phase line, x(t) for the three fields ===
+% Mathematica hint: 3x3 Grid with Plot, phase-line arrows, and NDSolve solutions
+% for several x0.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figs/fig03_three_fields.pdf}
+\caption{Three coordinated views of each scalar field: $f(x)$, the phase line, and
+trajectories $x(t)$. Filled: attractors; open: repellors.}
+\label{fig:threefields}
+\end{figure}
+
+\subsection{The first impossibility theorem}
+
+Between two consecutive roots the sign of $f$ cannot change, so a nonstationary
+scalar trajectory is \textbf{monotone} there. To return to an earlier value it would
+have to reverse direction, which requires crossing a zero; but a unique trajectory
+cannot cross a fixed point. Therefore:
+
+\begin{quote}
+\centering
+\emph{A scalar autonomous system can switch, but it cannot sustain a nonconstant
+cycle.}
+\end{quote}
+
+This is our first structural result: deform the curves without changing the number,
+order and transverse character of their crossings, and the same phase portrait
+survives. The exact trajectories change; the qualitative basins do not.
+
+\newpage
+
+% ============================================================
+\section{To remember, cross three times}
+% ============================================================
+
+\subsection{Memory as a design problem}
+
+Memory is a \emph{construction problem}. Two persistent states require the crossing
+sequence \textbf{stable -- unstable -- stable}. Consider a positively autoregulated
+gene: its own protein activates its production. Compressing the fast redistribution
+among promoter states into an activating Hill fraction, with first-order removal
+(dilution), a dimensionless teaching model is
+
+\begin{equation}
+\frac{dx}{d\tau} =
+\underbrace{0.15 + \frac{3x^{4}}{1+x^{4}}}_{f^{+}(x):\ \text{basal + activated production}}
+\;-\;
+\underbrace{x}_{f^{-}(x):\ \text{dilution removal}}.
+\label{eq:autoreg}
+\end{equation}
+
+The Hill term is a \emph{lumped} effective law: it assumes promoter dynamics are fast
+relative to protein accumulation; the exponent represents a cooperative occupancy
+model, \emph{not} an elementary four-molecule collision.
+
+\subsection{The logic of shape}
+
+Design does not start with the numbers; it starts with the \emph{shape}:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Positive feedback}: production rises with $x$.
+  \item \textbf{Enough steepness} (effective cooperativity): production locally
+        outruns removal.
+  \item \textbf{Saturation}: production flattens so removal can win again.
+\end{enumerate}
+
+The calculated crossings lie near $0.15$, $0.68$ and $3.12$: the outer two attract
+and the middle one is the \textbf{threshold}. A transient input is \emph{remembered}
+only if it pushes the state across that threshold. In this construction,
+\textbf{memory is bought with a sufficiently steep cooperative response}.
+
+% === FIGURE 4: f+ and f- curves of model (4) with the three crossings marked ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figs/fig04_three_crossings.pdf}
+\caption{Binary memory is three addition--removal crossings. Parameters place the
+crossings; shape creates the possibility.}
+\label{fig:threecrossings}
+\end{figure}
+
+\textbf{Design check.} Sketch a monotonically increasing addition curve that never
+becomes steeper than the removal line: can it cross three times? Now make it steep
+but remove saturation: which crossing is lost?
+
+\newpage
+
+% ============================================================
+\section{When two curves touch, a switch is born}
+% ============================================================
+
+\subsection{The saddle-node bifurcation}
+
+Let $r$ be a control parameter and $x$ a local displacement from the collision point.
+The \textbf{normal form} of the saddle-node bifurcation is
+
+\begin{equation}
+\dot{x} = f(x;r) = r - x^{2}.
+\label{eq:saddlenode}
+\end{equation}
+
+In the addition--removal language, the two curves \emph{touch} when both their values
+\emph{and} their slopes agree:
+
+\begin{equation}
+f^{+}(x^{*};r^{*}) = f^{-}(x^{*};r^{*}),
+\qquad
+\frac{\partial f^{+}}{\partial x}(x^{*};r^{*}) = \frac{\partial f^{-}}{\partial x}(x^{*};r^{*}).
+\label{eq:tangency}
+\end{equation}
+
+For $r>0$ the roots are $x^{*} = \pm\sqrt{r}$; since $f_x = -2x$, the positive one is
+stable and the negative one unstable. At $r=0$ they collide; for $r<0$ neither
+exists. A bifurcation is this change in the \emph{organization of all trajectories},
+not merely a bend in one plotted path.
+
+% === FIGURE 5: f(x;r) for r<0, r=0, r>0 (three panels) ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figs/fig05_saddlenode_fields.pdf}
+\caption{The field $f(x;r)=r-x^2$ below, at, and above tangency.}
+\label{fig:snfields}
+\end{figure}
+
+% === FIGURE 6: bifurcation diagram x* against r (solid and dashed branches) ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{figs/fig06_saddlenode_diagram.pdf}
+\caption{Bifurcation diagram: stable branch $x^{*}=+\sqrt{r}$ (solid) and unstable
+branch $x^{*}=-\sqrt{r}$ (dashed). No equilibrium exists for $r<0$.}
+\label{fig:sndiagram}
+\end{figure}
+
+\subsection{Two experimental signatures}
+
+\paragraph{Hysteresis.} A full sigmoidal switch usually has \emph{two} folds.
+Increasing the input destroys one state at one fold; decreasing it destroys the other
+state at the \emph{other} fold. The switching threshold therefore depends on
+direction and history.
+
+\paragraph{Critical slowing down.} Near the stable root, with
+$u = x - \sqrt{r}$,
+
+\begin{equation}
+\dot{u} = -2\sqrt{r}\,u
+\quad\Longrightarrow\quad
+u(t) \approx u(0)\,e^{-2\sqrt{r}\,t},
+\qquad
+\tau_{\text{relax}} = \frac{1}{2\sqrt{r}}.
+\label{eq:slowing}
+\end{equation}
+
+Moving from $r=1$ to $r=0.01$ changes $\tau_{\text{relax}}$ from $0.5$ to $5$: a
+hundredfold approach to the fold gives a tenfold slowing. This is a \emph{testable}
+prediction (early-warning signals for critical transitions~\cite{scheffer2009}),
+provided noise, sampling and the valid parameter range are checked.
+
+% === FIGURE 7: tau_relax against r (log scale) or relaxations for several r ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{figs/fig07_slowing.pdf}
+\caption{The relaxation time diverges like $1/(2\sqrt{r})$ as the fold is approached.}
+\label{fig:slowing}
+\end{figure}
+
+\newpage
+
+% ============================================================
+\section{Two dimensions: a second variable buys going around}
+% ============================================================
+
+\subsection{Nullclines: species-by-species balances}
+
+In the plane, trajectories can \emph{go around} fixed points, and a saddle can
+separate basins. The \textbf{nullcline} of species $i$ is the set where its total
+addition equals its total removal, that is, where its own derivative is zero. Only
+an \emph{intersection of all nullclines} is a fixed point.
+
+\subsection{The biological toggle, before the equations}
+
+Two genes, $G_X$ and $G_Y$, produce the repressors $X$ and $Y$; each represses the
+other:
+
+\begin{equation}
+G_X \rightsquigarrow G_X + X, \quad X \to \varnothing,
+\qquad
+G_Y \rightsquigarrow G_Y + Y, \quad Y \to \varnothing,
+\qquad
+Y \dashv G_X, \quad X \dashv G_Y.
+\label{eq:togglenet}
+\end{equation}
+
+For the arm producing $X$: with fast promoter redistribution (rapid equilibrium),
+conserved pool $q_{G_X} = G_X + C_{G_XY}$ and occupancy
+$C_{G_XY}/G_X = (Y/K_Y)^{n_Y}$, the free-promoter fraction is
+
+\begin{equation}
+\frac{G_X}{q_{G_X}} = \frac{1}{1+(Y/K_Y)^{n_Y}}.
+\label{eq:occupancy}
+\end{equation}
+
+If composite production is proportional to free promoter, the slow concentrations obey
+
+\begin{equation}
+\dot{X} = \frac{\alpha_X}{1+(Y/K_Y)^{n_Y}} - \delta_X X,
+\qquad
+\dot{Y} = \frac{\alpha_Y}{1+(X/K_X)^{n_X}} - \delta_Y Y.
+\label{eq:toggle}
+\end{equation}
+
+This is \emph{not} elementary mass action: it is a reduced law for a specific
+biological scenario, and its assumptions stay attached.
+
+\subsection{Phase portrait of the symmetric case}
+
+Scaling concentrations and time, the symmetric teaching case is
+
+\begin{equation}
+\dot{x} = \frac{4}{1+y^{2}} - x,
+\qquad
+\dot{y} = \frac{4}{1+x^{2}} - y,
+\qquad x,y \geq 0.
+\label{eq:togglesym}
+\end{equation}
+
+Procedure: (1) $\dot{x}=0$ gives the nullcline $x = 4/(1+y^2)$; (2) $\dot{y}=0$ gives
+$y = 4/(1+x^2)$; (3) at every intersection both components vanish; (4) testing one
+point per region orients the arrows.
+
+\begin{center}
+\begin{tabular}{cccc}
+\hline
+fixed point & eigenvalues & type & interpretation \\
+\hline
+$(0.27,\ 3.73)$ & $-0.5,\ -1.5$ & stable node & low $X$ / high $Y$ \\
+$(1.38,\ 1.38)$ & $+0.31,\ -2.31$ & saddle & threshold state \\
+$(3.73,\ 0.27)$ & $-0.5,\ -1.5$ & stable node & high $X$ / low $Y$ \\
+\hline
+\end{tabular}
+\end{center}
+
+The \textbf{stable manifold of the saddle} (the separatrix) is the basin boundary: a
+perturbation switches the cell only if it crosses it. A steep response by itself is
+\emph{not yet} bistability. This switch was actually built in
+\emph{E.~coli}~\cite{gardner2000}; what transfers is the dynamical claim: two
+attractors, their basins, and a threshold that makes history matter.
+
+% === FIGURE 8: nullclines + phase portrait of the toggle with separatrix ===
+% Mathematica hint: ContourPlot of the nullclines + StreamPlot of the field
+% + separatrix curve integrated backwards from the saddle.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figs/fig08_toggle.pdf}
+\caption{Nullclines and phase portrait of the symmetric toggle~\eqref{eq:togglesym}.
+Filled points: expression states; open point: saddle; dashed curve: separatrix.}
+\label{fig:toggle}
+\end{figure}
+
+% === ANIMATION (optional): trajectories from several (x0,y0) converging ===
+% Mathematica hint: Animate/Manipulate with NDSolve + StreamPlot.
+
+\newpage
+
+% ============================================================
+\section{The dimension boundary}
+% ============================================================
+
+Trajectories cannot cross, but the \emph{force} of that rule depends on dimension:
+
+\begin{itemize}[nosep]
+  \item \textbf{One dimension:} motion is ordered between fixed points (monotonicity).
+  \item \textbf{Two dimensions:} an isolated closed orbit separates the plane into
+        inside and outside. The \textbf{Poincar\'e--Bendixson} theorem turns ``no
+        fixed point remains in the limiting set'' into the existence of a periodic
+        orbit. The qualitative catalogue is short: nodes, saddles, spirals, centers
+        and isolated cycles.
+  \item \textbf{Three dimensions:} a curve has room to wind, braid and pass around
+        itself without violating uniqueness. Chaos becomes possible.
+\end{itemize}
+
+Biological example: the \textbf{repressilator}, a cyclic ring of three repressors,
+
+\begin{equation}
+\dot{p}_i = \frac{\alpha}{1+p_{i-1}^{\,n}} - p_i,
+\qquad i = 1,2,3 \pmod 3,
+\label{eq:repressilator}
+\end{equation}
+
+realized synthetically in \emph{E.~coli}~\cite{elowitz2000} and later improved toward
+persistent, synchronized oscillations~\cite{potvin2016}. Moral:
+\textbf{lack of structure is not a structure} --- permission by geometry does not
+explain a mechanism. That is why we need the two structural retreats of the next
+sections.
+
+% === FIGURE 9: repressilator oscillations p_i(t) ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figs/fig09_repressilator.pdf}
+\caption{Sustained oscillations of the repressilator~\eqref{eq:repressilator}
+(example: large $\alpha$, $n=2$).}
+\label{fig:repressilator}
+\end{figure}
+
+\newpage
+
+% ============================================================
+\section{Close to a fixed point, every network is linear}
+% ============================================================
+
+\subsection{Linearization is a new dynamical system}
+
+Let $\dot{x} = F(x)$ with fixed point $x^{*}$ and displacement $u = x - x^{*}$.
+Taylor expansion:
+
+\begin{equation}
+\dot{u} = A u + R(u),
+\qquad
+A = J(x^{*}) = \left.\frac{\partial F}{\partial x}\right|_{x^{*}},
+\qquad
+\frac{\lVert R(u)\rVert}{\lVert u\rVert} \to 0 \ \ (u\to 0).
+\label{eq:taylor}
+\end{equation}
+
+The canonical linearization discards the remainder and uses a new displacement
+vector $z$:
+
+\begin{equation}
+\boxed{\ \frac{d}{dt}\begin{bmatrix} z_1 \\ z_2 \end{bmatrix}
+= A \begin{bmatrix} z_1 \\ z_2 \end{bmatrix}\ },
+\qquad
+A = \begin{bmatrix} a_{11} & a_{12} \\ a_{21} & a_{22} \end{bmatrix}.
+\label{eq:linear}
+\end{equation}
+
+If $A w = \lambda w$, motion along the eigenvector $w$ has amplitude
+$\dot{a} = \lambda a$, and every solution is a combination of modes:
+
+\begin{equation}
+z(t) = \sum_j c_j\, e^{\lambda_j t} w_j.
+\label{eq:modes}
+\end{equation}
+
+The real part of $\lambda_j$ sets the exponential envelope; the imaginary part sets
+the rotation. For the fixed point to recover from \emph{every} small perturbation,
+\emph{all} modes must decay.
+
+\subsection{The Hurwitz rule and the trace--determinant plane}
+
+\begin{quote}
+\textbf{Hurwitz rule.} A real matrix $A$ is Hurwitz if and only if
+$\operatorname{Re}\lambda_j(A) < 0$ for every eigenvalue. Then $z=0$ is globally
+exponentially stable for~\eqref{eq:linear}, and $x^{*}$ is locally exponentially
+stable in the nonlinear system. A single eigenvalue with positive real part proves
+instability. A zero real part leaves the nonlinear case undecided.
+\end{quote}
+
+For a $2\times2$ matrix, with $\tau = \operatorname{tr}A$, $\Delta = \det A$ and
+discriminant $D = \tau^2 - 4\Delta$:
+
+\begin{equation}
+\boxed{\ A \text{ is Hurwitz} \iff \tau < 0 \ \text{and}\ \Delta > 0\ }
+\label{eq:hurwitz2d}
+\end{equation}
+
+Intuition: $\Delta < 0$ means two real eigenvalues of opposite sign (one direction
+grows: a saddle); $\Delta > 0$ puts them on the same side or in a conjugate pair,
+and $\tau < 0$ then places their real parts on the decaying side.
+
+% === FIGURE 10: (tau, Delta) plane with regions: saddle, nodes, spirals, parabola ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figs/fig10_trace_det.pdf}
+\caption{The trace--determinant plane. The Hurwitz region is $\tau<0$, $\Delta>0$;
+the parabola $\tau^2 = 4\Delta$ separates real from complex eigenvalues; the axis
+$\Delta>0$, $\tau=0$ holds the linear centers (the undecided case).}
+\label{fig:tracedet}
+\end{figure}
+
+\subsection{The Jacobian as a wiring diagram}
+
+For the toggle~\eqref{eq:togglesym}:
+
+\begin{equation}
+J(x,y) =
+\begin{bmatrix}
+-1 & -\dfrac{8y}{(1+y^{2})^{2}} \\[8pt]
+-\dfrac{8x}{(1+x^{2})^{2}} & -1
+\end{bmatrix}.
+\label{eq:jactoggle}
+\end{equation}
+
+The negative diagonal is each protein's removal (growth dilution contributes
+$-\lambda_i$ to the diagonal); the negative off-diagonal entries are the mutual
+repression. In any biochemical model, $A_{ij}$ asks how species $j$ changes the net
+rate of species $i$: \textbf{the sign pattern of the Jacobian is the local wiring
+diagram}.
+
+\textbf{Scope of the Jacobian.} A Hurwitz Jacobian proves \emph{local} attraction
+near \emph{one} hyperbolic fixed point. It does not locate every fixed point, does
+not draw the global basin boundary, does not prove boundedness and does not rule out
+a remote attractor. At the toggle saddle, an eigenvector only gives the
+\emph{tangent} to the separatrix; the global curve still belongs to the nonlinear
+system.
+
+% === FIGURE 11: gallery of 4 portraits: node, saddle, spiral, center ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figs/fig11_gallery.pdf}
+\caption{The four modal portraits: stable node, saddle, stable spiral and linear
+center. They are conclusions from eigenvalues, not decorations.}
+\label{fig:gallery}
+\end{figure}
+
+\newpage
+
+% ============================================================
+\section{When the linear test says nothing}
+% ============================================================
+
+\subsection{Three systems, one and the same Jacobian}
+
+Compare three systems in polar coordinates $(r,\theta)$:
+
+\begin{equation}
+\dot{r} = -r^{3},\ \dot{\theta}=1
+\qquad
+\dot{r} = 0,\ \dot{\theta}=1
+\qquad
+\dot{r} = +r^{3},\ \dot{\theta}=1.
+\label{eq:centers}
+\end{equation}
+
+At the origin, \emph{all three} have Jacobian
+$\left(\begin{smallmatrix} 0 & -1 \\ 1 & 0 \end{smallmatrix}\right)$ with eigenvalues
+$\pm i$. The cubic radial term is invisible at first order, and it decides three
+different fates: attraction, neutral cycles or repulsion.
+
+% === FIGURE 12: the three fields of (19) side by side ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figs/fig12_centers.pdf}
+\caption{Same Jacobian, three fates. Only the cubic term decides.}
+\label{fig:centers}
+\end{figure}
+
+\subsection{The spring: state, energy and LaSalle}
+
+The damped spring $m\ddot{q} + c\dot{q} + kq = 0$ has two jobs here.
+First, \emph{what is a state?}: position alone is not enough (the mass can pass the
+same $q$ moving left or right); with $v=\dot{q}$ and $z=(q,v)$ we get an
+\emph{exact} first-order system (not a linearization):
+
+\begin{equation}
+\frac{d}{dt}\begin{bmatrix} q \\ v \end{bmatrix}
+=
+\begin{bmatrix} 0 & 1 \\ -k/m & -c/m \end{bmatrix}
+\begin{bmatrix} q \\ v \end{bmatrix}.
+\label{eq:spring}
+\end{equation}
+
+Second, mechanical energy as a global certificate:
+
+\begin{equation}
+E(q,v) = \tfrac{1}{2}mv^{2} + \tfrac{1}{2}kq^{2}
+\quad\Longrightarrow\quad
+\dot{E} = mv\dot{v} + kq\dot{q} = -c\,v^{2} \leq 0.
+\label{eq:energy}
+\end{equation}
+
+With $c=0$ energy is conserved: each initial condition lives on its own ellipse; the
+origin is stable but \emph{not} attracting. With $c>0$ energy never increases.
+Since $\dot{E}=0$ on the whole line $v=0$, we cannot claim ``strict decrease''; but
+at any point of that line with $q\neq 0$ we have $\dot{v} = -(k/m)q \neq 0$: the
+trajectory leaves immediately. Only the origin remains invariant there, and
+\textbf{LaSalle's} invariance argument gives convergence.
+
+% === FIGURE 13: spring without and with drag: (q,v) portrait and E(t) ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figs/fig13_spring.pdf}
+\caption{Left: without drag, closed orbits and constant $E$.
+Right: with drag, energy falls and every trajectory converges.}
+\label{fig:spring}
+\end{figure}
+
+\subsection{From energy to Lyapunov}
+
+A differentiable scalar function $V$ is a Lyapunov candidate around a fixed point if
+it is zero there and positive nearby. Compute $\dot{V} = \nabla V \cdot F$ using the
+\emph{full} vector field. Strict negativity gives asymptotic stability (under the
+stated domain conditions); if only $\dot{V}\leq 0$, one must identify the largest
+invariant subset of $\{\dot{V}=0\}$. Energy is a statement about \emph{every}
+trajectory, not about one simulated path.
+
+\newpage
+
+% ============================================================
+\section{Chemistry forbids most vector fields}
+\label{sec:chemistry}
+% ============================================================
+
+The spring was borrowed physics: its signed rotation is \emph{not} a closed
+concentration model. An elementary mass-action network,
+
+\begin{equation}
+\sum_j \alpha_{ij} X_j \longrightarrow \sum_j \beta_{ij} X_j,
+\qquad
+v_i(x) = k_i \prod_j x_j^{\alpha_{ij}},
+\label{eq:massaction}
+\end{equation}
+
+inherits restrictions that a generic vector field does not have:
+
+\paragraph{Positivity.} If reaction $i$ consumes $X_j$, its flux contains the factor
+$x_j$ and vanishes on the boundary $x_j=0$: consumption cannot push a concentration
+negative. Every face of the nonnegative orthant points inward or is tangent. Pure
+rotation $\dot{x}_1 = -x_2$, $\dot{x}_2 = x_1$ \emph{fails} as concentration
+dynamics: on the face $x_1=0$ with $x_2>0$, $F_1 = -x_2 < 0$ and the field exits
+the admissible region.
+
+% === FIGURE 14: pure rotation violating positivity vs a field that satisfies it ===
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figs/fig14_positivity.pdf}
+\caption{Positivity excludes pure rotation as concentration dynamics: the
+nonnegative orthant must be forward invariant.}
+\label{fig:positivity}
+\end{figure}
+
+\paragraph{Independent parameters.} Distinct elementary reactions have distinct rate
+constants. A behavior that requires two unrelated constants to match \emph{exactly}
+is tuned, not structural.
+
+\paragraph{Constrained kinetic form.} Mass action produces polynomials with signs
+tied to what each reaction consumes and produces. Effective non-polynomial laws
+(Hill, Michaelis--Menten) arise by \emph{eliminating fast states}: timescale
+separation is a genuine route past the polynomial wall (the topic of lecture 6).
+
+\paragraph{Conservation.} For $\dot{x} = Sv(x)$, every row vector $\ell$ with
+$\ell^{\mathsf{T}} S = 0$ gives a conserved quantity $\ell^{\mathsf{T}} x =$
+constant. Stability must then be judged \emph{inside} the corresponding
+stoichiometric compatibility class: a zero eigenvalue normal to that class may be
+reporting a conserved total, not a physical instability.
+
+\newpage
+
+% ============================================================
+\section{Closing: the price list}
+% ============================================================
+
+Analysis did not replace simulation: it identified which questions can be settled
+\emph{before} exact parameters are known, and which still require the bottom-level
+model.
+
+\begin{center}
+\begin{tabular}{p{4.2cm} p{5.2cm} p{4.6cm}}
+\hline
+\textbf{function sought} & \textbf{structural price} & \textbf{what still has to be checked} \\
+\hline
+one persistent expression level & one restoring addition--removal crossing & domain, boundedness, recovery time \\
+binary memory & three crossings; sufficiently steep cooperative response & basin sizes, noise-driven switching, reduction validity \\
+commitment with hysteresis & two folds in a parameterized response & critical slowing, finite-copy noise \\
+local recovery & a Hurwitz Jacobian on the relevant slice & whether the perturbation stays local \\
+a biochemical clock & $\geq 2$ effective dimensions, rotational feedback, an isolated attracting orbit & boundedness, period, amplitude, robustness \\
+global convergence & a Lyapunov function, monotonicity, contraction & every hypothesis on the invariant domain \\
+\hline
+\end{tabular}
+\end{center}
+
+The ``cell as a chemical plant'' question now has a more precise answer: positivity
+keeps concentrations in their admissible region; dilution under constant growth
+contributes self-limiting diagonal terms; saturation caps many production fluxes;
+conserved pools confine motion to lower-dimensional slices. None of these alone is a
+universal stability theorem ---cells deliberately switch and oscillate--- but together
+they explain why unbounded behavior is not the default, and why interesting behavior
+must be \emph{built}.
+
+\begin{quote}
+\centering
+\emph{Simulation tells you what one cell did once. Structure tells you what every
+cell of that design can and cannot do --- and that is the only kind of answer an
+experiment can be designed against.}
+\end{quote}
+
+% ============================================================
+% References
+% ============================================================
+\begin{thebibliography}{9}
+
+\bibitem{scheffer2009}
+M.~Scheffer \textit{et al.}, ``Early-warning signals for critical transitions,''
+\textit{Nature} \textbf{461}, 53--59 (2009).
+
+\bibitem{gardner2000}
+T.~S. Gardner, C.~R. Cantor and J.~J. Collins, ``Construction of a genetic toggle
+switch in \textit{Escherichia coli},'' \textit{Nature} \textbf{403}, 339--342 (2000).
+
+\bibitem{elowitz2000}
+M.~B. Elowitz and S.~Leibler, ``A synthetic oscillatory network of transcriptional
+regulators,'' \textit{Nature} \textbf{403}, 335--338 (2000).
+
+\bibitem{potvin2016}
+L.~Potvin-Trottier \textit{et al.}, ``Synchronous long-term oscillations in a
+synthetic gene circuit,'' \textit{Nature} \textbf{538}, 514--517 (2016).
+
+\bibitem{hirsch}
+M.~W. Hirsch, S.~Smale and R.~L. Devaney, \textit{Differential Equations, Dynamical
+Systems, and an Introduction to Chaos}, 3rd ed., Academic Press (2013).
+
+\bibitem{core}
+F.~Xiao, \textit{CCBS 2026, Lecture 4 core page},
+\url{https://chemaoxfz.github.io/assets/ccbs/2026fall/lecture04/core/}.
+
+\end{thebibliography}
+
+\end{document}
